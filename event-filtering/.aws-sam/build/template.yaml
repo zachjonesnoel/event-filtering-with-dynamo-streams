@@ -2,6 +2,14 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: event-filtering
 Transform:
 - AWS::Serverless-2016-10-31
+Parameters:
+  ToEmail:
+    Type: String
+    Description: Enter the email address which receives emails
+  FromEmail:
+    Type: String
+    Description: Enter the email address which sends emails (SES email identity/domain
+      needs to be verified)
 Resources:
   getAllItemsFunction:
     Type: AWS::Serverless::Function
@@ -17,11 +25,11 @@ Resources:
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
-            Ref: SampleTable
+            Ref: DynamoDBTable
       Environment:
         Variables:
           SAMPLE_TABLE:
-            Ref: SampleTable
+            Ref: DynamoDBTable
       Events:
         Api:
           Type: Api
@@ -43,11 +51,11 @@ Resources:
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
-            Ref: SampleTable
+            Ref: DynamoDBTable
       Environment:
         Variables:
           SAMPLE_TABLE:
-            Ref: SampleTable
+            Ref: DynamoDBTable
       Events:
         Api:
           Type: Api
@@ -69,11 +77,11 @@ Resources:
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
-            Ref: SampleTable
+            Ref: DynamoDBTable
       Environment:
         Variables:
           SAMPLE_TABLE:
-            Ref: SampleTable
+            Ref: DynamoDBTable
       Events:
         Api:
           Type: Api
@@ -81,15 +89,55 @@ Resources:
             Path: /
             Method: POST
       CodeUri: putItemFunction
-  SampleTable:
-    Type: AWS::Serverless::SimpleTable
+  putItemTriggerFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      PrimaryKey:
-        Name: id
-        Type: String
+      Handler: src/handlers/dynamodb-insert-trigger.putItemTriggerHandler
+      Runtime: nodejs14.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: DynamoDB put event trigger.
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DynamoDBTable
+      Environment:
+        Variables:
+          TO_EMAIL:
+            Ref: ToEmail
+          FROM_EMAIL:
+            Ref: FromEmail
+      Events:
+        DynamoDBTable:
+          Type: DynamoDB
+          Properties:
+            Stream:
+              Fn::GetAtt:
+              - DynamoDBTable
+              - StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 100
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["INSERT"],"dynamodb":{"NewImage":{"item_type":{"S":
+                  [ "THREAT" ]}}}}'
+      CodeUri: putItemTriggerFunction
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
       ProvisionedThroughput:
-        ReadCapacityUnits: 2
-        WriteCapacityUnits: 2
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
 Outputs:
   WebEndpoint:
     Description: API Gateway endpoint URL for Prod stage
