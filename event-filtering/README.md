@@ -40,4 +40,7 @@ aws cloudformation delete-stack --stack-name event-filtering
 ```
 
 ## Resources
+- [AWS announcement blog](https://aws.amazon.com/about-aws/whats-new/2021/11/aws-lambda-event-filtering-amazon-sqs-dynamodb-kinesis-sources/)
+- [Trigger Lambda Functions with event filtering](https://dev.to/aws-builders/trigger-lambda-functions-with-event-filtering-2pnb)
+- [Deep dive into Lambda event-filters for DyanmoDB](https://dev.to/aws-builders/deep-dive-into-lambda-event-filters-for-dyanmodb-320)
 
