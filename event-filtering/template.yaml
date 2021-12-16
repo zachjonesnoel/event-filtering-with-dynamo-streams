@@ -1,14 +1,9 @@
-# This is the SAM template that represents the architecture of your serverless application
-# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-template-basics.html
+# SAM template for Avengers Threat - Lambda fn Event-filtering with DynamoDB Streams
 
-# The AWSTemplateFormatVersion identifies the capabilities of the template
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   event-filtering
 
-# Transform section specifies one or more macros that AWS CloudFormation uses to process your template
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
 Transform:
 - AWS::Serverless-2016-10-31
 
@@ -19,29 +14,28 @@ Parameters:
   FromEmail:
     Type: String
     Description: "Enter the email address which sends emails (SES email identity/domain needs to be verified)"
+  SESIdentityName:
+    Type: String
+    Description: "verified SES email identity/domain"
 
 Resources:
-  # Each Lambda function is defined by properties:
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-
-  # This is a Lambda function config associated with the source code: get-all-items.js
+  
   getAllItemsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/get-all-items.getAllItemsHandler
+      CodeUri: src/handlers/
+      Handler: get-all-items.getAllItemsHandler
       Runtime: nodejs14.x
       Architectures:
         - x86_64
       MemorySize: 128
       Timeout: 100
-      Description: A simple example includes a HTTP get method to get all items from a DynamoDB table.
+      Description: Get all items.
       Policies:
-        # Give Create/Read/Update/Delete Permissions to the SampleTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTable
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
           SAMPLE_TABLE: !Ref DynamoDBTable
       Events:
         Api:
@@ -49,27 +43,23 @@ Resources:
           Properties:
             Path: /
             Method: GET
-  # Each Lambda function is defined by properties:
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-
-  # This is a Lambda function config associated with the source code: get-by-id.js
+  
   getByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/get-by-id.getByIdHandler
+      CodeUri: src/handlers/
+      Handler: get-by-id.getByIdHandler
       Runtime: nodejs14.x
       Architectures:
         - x86_64
       MemorySize: 128
       Timeout: 100
-      Description: A simple example includes a HTTP get method to get one item by id from a DynamoDB table.
+      Description: Get an item by item ID.
       Policies:
-        # Give Create/Read/Update/Delete Permissions to the SampleTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTable
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
           SAMPLE_TABLE: !Ref DynamoDBTable
       Events:
         Api:
@@ -77,14 +67,36 @@ Resources:
           Properties:
             Path: /{id}
             Method: GET
-  # Each Lambda function is defined by properties:
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
 
-  # This is a Lambda function config associated with the source code: put-item.js
+  deleteItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: delete-item.deleteItemHandler
+      Runtime: nodejs14.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Delete item from DynamoDB.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+      Environment:
+        Variables:
+          SAMPLE_TABLE: !Ref DynamoDBTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{id}
+            Method: DELETE
+
   putItemFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/put-item.putItemHandler
+      CodeUri: src/handlers/
+      Handler: put-item.putItemHandler
       Runtime: nodejs14.x
       Architectures:
         - x86_64
@@ -92,12 +104,10 @@ Resources:
       Timeout: 100
       Description: A simple example includes a HTTP post method to add one item to a DynamoDB table.
       Policies:
-        # Give Create/Read/Update/Delete Permissions to the SampleTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTable
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
           SAMPLE_TABLE: !Ref DynamoDBTable
       Events:
         Api:
@@ -105,14 +115,12 @@ Resources:
           Properties:
             Path: /
             Method: POST
-  # Simple syntax to create a DynamoDB table with a single attribute primary key, more in
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlesssimpletable
 
-  # DynamoDB table to store item: {id: &lt;ID&gt;, name: &lt;NAME&gt;}
   putItemTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/dynamodb-insert-trigger.putItemTriggerHandler
+      CodeUri: src/handlers/
+      Handler: dynamodb-insert-trigger.putItemTriggerHandler
       Runtime: nodejs14.x
       Architectures:
         - x86_64
@@ -120,12 +128,12 @@ Resources:
       Timeout: 100
       Description: DynamoDB put event trigger.
       Policies:
-        # Give Create/Read/Update/Delete Permissions to the SampleTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTable
+        - SESCrudPolicy:
+            IdentityName: !Ref SESIdentityName
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
           TO_EMAIL: !Ref ToEmail
           FROM_EMAIL: !Ref FromEmail
       Events:
@@ -138,7 +146,41 @@ Resources:
             BatchSize: 100
             FilterCriteria:
               Filters:
+                  # Filter pattern to check only inserted action on DynamoDB with the item_type being THREAT
                 - Pattern: '{"eventName": ["INSERT"],"dynamodb":{"NewImage":{"item_type":{"S": [ "THREAT" ]}}}}'
+
+  deleteItemTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: dynamodb-delete-trigger.deleteItemTriggerHandler
+      Runtime: nodejs14.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: DynamoDB delete event trigger.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+        - SESCrudPolicy:
+            IdentityName: !Ref SESIdentityName
+      Environment:
+        Variables:
+          TO_EMAIL: !Ref ToEmail
+          FROM_EMAIL: !Ref FromEmail
+      Events:
+        DynamoDBTable:
+          Type: DynamoDB
+          Properties:
+            Stream:
+              !GetAtt DynamoDBTable.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 100
+            FilterCriteria:
+              Filters:
+                  # Filter pattern to check only deleted action on DynamoDB
+                - Pattern: '{"eventName": ["REMOVE"]}'
 
   DynamoDBTable:
     Type: AWS::DynamoDB::Table

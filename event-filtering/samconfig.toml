@@ -10,4 +10,4 @@ confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 disable_rollback = true
 image_repositories = []
-parameter_overrides = "ToEmail=\"avengerjones@mailinator.com\" FromEmail=\"avengers@zachjonesnoel.com\""
+parameter_overrides = "ToEmail=\"avengerjones@mailinator.com\" FromEmail=\"avengers@zachjonesnoel.com\" SESIdentityName=\"zachjonesnoel.com\""

@@ -10,18 +10,21 @@ Parameters:
     Type: String
     Description: Enter the email address which sends emails (SES email identity/domain
       needs to be verified)
+  SESIdentityName:
+    Type: String
+    Description: verified SES email identity/domain
 Resources:
   getAllItemsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/get-all-items.getAllItemsHandler
+      CodeUri: getAllItemsFunction
+      Handler: get-all-items.getAllItemsHandler
       Runtime: nodejs14.x
       Architectures:
       - x86_64
       MemorySize: 128
       Timeout: 100
-      Description: A simple example includes a HTTP get method to get all items from
-        a DynamoDB table.
+      Description: Get all items.
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -36,18 +39,17 @@ Resources:
           Properties:
             Path: /
             Method: GET
-      CodeUri: getAllItemsFunction
   getByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/get-by-id.getByIdHandler
+      CodeUri: getByIdFunction
+      Handler: get-by-id.getByIdHandler
       Runtime: nodejs14.x
       Architectures:
       - x86_64
       MemorySize: 128
       Timeout: 100
-      Description: A simple example includes a HTTP get method to get one item by
-        id from a DynamoDB table.
+      Description: Get an item by item ID.
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -62,11 +64,36 @@ Resources:
           Properties:
             Path: /{id}
             Method: GET
-      CodeUri: getByIdFunction
+  deleteItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: deleteItemFunction
+      Handler: delete-item.deleteItemHandler
+      Runtime: nodejs14.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Delete item from DynamoDB.
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DynamoDBTable
+      Environment:
+        Variables:
+          SAMPLE_TABLE:
+            Ref: DynamoDBTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{id}
+            Method: DELETE
   putItemFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/put-item.putItemHandler
+      CodeUri: putItemFunction
+      Handler: put-item.putItemHandler
       Runtime: nodejs14.x
       Architectures:
       - x86_64
@@ -88,11 +115,11 @@ Resources:
           Properties:
             Path: /
             Method: POST
-      CodeUri: putItemFunction
   putItemTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src/handlers/dynamodb-insert-trigger.putItemTriggerHandler
+      CodeUri: putItemTriggerFunction
+      Handler: dynamodb-insert-trigger.putItemTriggerHandler
       Runtime: nodejs14.x
       Architectures:
       - x86_64
@@ -103,6 +130,9 @@ Resources:
       - DynamoDBCrudPolicy:
           TableName:
             Ref: DynamoDBTable
+      - SESCrudPolicy:
+          IdentityName:
+            Ref: SESIdentityName
       Environment:
         Variables:
           TO_EMAIL:
@@ -123,7 +153,43 @@ Resources:
               Filters:
               - Pattern: '{"eventName": ["INSERT"],"dynamodb":{"NewImage":{"item_type":{"S":
                   [ "THREAT" ]}}}}'
-      CodeUri: putItemTriggerFunction
+  deleteItemTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: deleteItemTriggerFunction
+      Handler: dynamodb-delete-trigger.deleteItemTriggerHandler
+      Runtime: nodejs14.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: DynamoDB delete event trigger.
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DynamoDBTable
+      - SESCrudPolicy:
+          IdentityName:
+            Ref: SESIdentityName
+      Environment:
+        Variables:
+          TO_EMAIL:
+            Ref: ToEmail
+          FROM_EMAIL:
+            Ref: FromEmail
+      Events:
+        DynamoDBTable:
+          Type: DynamoDB
+          Properties:
+            Stream:
+              Fn::GetAtt:
+              - DynamoDBTable
+              - StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 100
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["REMOVE"]}'
   DynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:

@@ -10,7 +10,7 @@ const tableName = process.env.SAMPLE_TABLE;
 /**
  * A simple example includes a HTTP post method to add one item to a DynamoDB table.
  */
-exports.putItemHandler = async (event) => {
+exports.updateItemHandler = async (event) => {
     if (event.httpMethod !== 'POST') {
         throw new Error(`postMethod only accepts POST method, you tried: ${event.httpMethod} method.`);
     }
@@ -19,17 +19,16 @@ exports.putItemHandler = async (event) => {
 
     // Get id and name from the body of the request
     const body = JSON.parse(event.body)
-    const location_name = body.location_name;
-    const reported_on = body.reported_on;
-    const item_type = body.item_type;
+    const name = body.name;
+
     // Creates a new item, or replaces an old item with a new item
     // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html#put-property
     var params = {
-        TableName: tableName,
-        Item: { id: ( Date.now()).toString(), location_name: location_name, reported_on: reported_on, item_type:item_type }
+        TableName : tableName,
+        Item: { id : (new Date().now()).toString(), name: name }
     };
 
-    const result = await docClient.put(params).promise();
+    const result = await docClient.update(params).promise();
 
     const response = {
         statusCode: 200,
