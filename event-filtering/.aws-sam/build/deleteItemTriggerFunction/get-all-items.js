@@ -21,14 +21,20 @@ exports.getAllItemsHandler = async (event) => {
     // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html#scan-property
     // https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html
     var params = {
-        TableName : tableName
+        TableName: tableName
     };
     const data = await docClient.scan(params).promise();
     const items = data.Items;
 
     const response = {
-        statusCode: 200,
-        body: JSON.stringify(items)
+        "statusCode": 200,
+        "headers": {
+            "X-Requested-With": '*',
+            "Access-Control-Allow-Headers": 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-requested-with',
+            "Access-Control-Allow-Origin": '*',
+            "Access-Control-Allow-Methods": 'POST,GET,OPTIONS'
+        },
+        "body": JSON.stringify(items)
     };
 
     // All log statements are written to CloudWatch

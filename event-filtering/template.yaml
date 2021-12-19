@@ -18,8 +18,14 @@ Parameters:
     Type: String
     Description: "verified SES email identity/domain"
 
+Globals:
+  Api:
+    Cors:
+      AllowOrigin: "'*'"
+      AllowHeaders: "'Content-Type'"
+      AllowMethods: "'GET,POST,DELETE,OPTIONS'"
+
 Resources:
-  
   getAllItemsFunction:
     Type: AWS::Serverless::Function
     Properties:

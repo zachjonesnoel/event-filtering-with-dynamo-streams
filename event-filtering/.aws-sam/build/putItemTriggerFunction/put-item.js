@@ -26,14 +26,20 @@ exports.putItemHandler = async (event) => {
     // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html#put-property
     var params = {
         TableName: tableName,
-        Item: { id: ( Date.now()).toString(), location_name: location_name, reported_on: reported_on, item_type:item_type }
+        Item: { id: (Date.now()).toString(), location_name: location_name, reported_on: reported_on, item_type: item_type }
     };
 
     const result = await docClient.put(params).promise();
 
     const response = {
-        statusCode: 200,
-        body: JSON.stringify(body)
+        "statusCode": 200,
+        "headers": {
+            "X-Requested-With": '*',
+            "Access-Control-Allow-Headers": 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-requested-with',
+            "Access-Control-Allow-Origin": '*',
+            "Access-Control-Allow-Methods": 'POST,GET,OPTIONS'
+        },
+        "body": JSON.stringify(body)
     };
 
     // All log statements are written to CloudWatch
